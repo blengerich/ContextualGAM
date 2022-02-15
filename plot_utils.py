@@ -28,7 +28,7 @@ def center_and_scatter(xs, ys, with_var=False, plot_args=None):
         y_maxes = y_means + 2*np.std(ys, axis=0)
         plt.fill_between(xs[order], y_mins[order], y_maxes[order], alpha=0.2)
 
-def plot_cgams_homogeneous_effects(nams, C_train, X_all_train):
+def plot_cgams_homogeneous_effects(nams, C_train, X_all_train, ylabel="Addition to P(Progression) (Log-Odds)"):
     p = C_train.shape[-1]
     for j, feat in enumerate(C_train.columns):
         fig = plt.figure(figsize=(8, 6))
@@ -51,7 +51,7 @@ def plot_cgams_homogeneous_effects(nams, C_train, X_all_train):
         center_and_scatter(xs, ys, with_var=True, plot_args={'marker': '+'})
         plt.xlabel(feat, fontsize=32)
         plt.ylim([0, 2])
-        plt.ylabel("Addition to P(Progression) (Log-Odds)", fontsize=18)
+        plt.ylabel(ylabel, fontsize=18)
         plt.xticks(fontsize=24)
         plt.yticks(fontsize=24)
 

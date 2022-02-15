@@ -82,7 +82,7 @@ class ContextualGAM:
                  archetype_init, learning_rate=1e-3, encoder_width=32, 
                  skip_encoder_depth=1, skip_encoder_width=4, skip_activation='linear',
                  tf_dtype=tf.dtypes.float32, 
-                 contextual_bools=None, activation='linear',
+                 contextual_bools=None, activation='linear', encoder_final_activation='linear',
                  use_skip=False, base_model=None):
         super(ContextualGAM, self).__init__()
         self.C = tf.keras.layers.Input(shape=encoder_input_shape, dtype=tf_dtype, name="C")
@@ -97,7 +97,7 @@ class ContextualGAM:
                  depth=encoder_depth, width=encoder_width,
                  boolean_feats=contextual_bools,
                  activation=activation, 
-                 final_activation='linear')(self.C_flat), axis=0)
+                 final_activation=encoder_final_activation)(self.C_flat), axis=0)
         self.encoder = tf.keras.models.Model(inputs=self.C, outputs=self.encoder_gam)
         self.encodings = self.encoder(self.C)
         self.explainer = Explainer(
@@ -121,7 +121,7 @@ class ContextualGAM:
         self.model = tf.keras.models.Model(inputs=(self.C, self.X, self.base_y),
                                            outputs=self.outputs)
 
-        self.opt = tf.keras.optimizers.Adam(learning_rate=learning_rate)#self.lr_fn)
+        self.opt = tf.keras.optimizers.Adam(learning_rate=learning_rate)
         self.metrics = ['AUC']
 
         self.loss = tf.keras.losses.BinaryCrossentropy(from_logits=False)
@@ -133,6 +133,9 @@ class ContextualGAM:
     
     def get_embeddings(self, C):
         return self.encoder(C)
+    
+    def get_sample_models(self, C):
+        return self.explainer(self.get_embeddings(C))
     
     def predict_proba(self, C, X, C_base=None):
         if self.base_model is not None:
@@ -149,7 +152,7 @@ class ContextualGAM:
     
     def fit(self, C_train, X_train, Y_train, C_base=None,
             max_epochs=500, verbose=1, batch_size=16,
-            early_stopping_epochs=10):
+            early_stopping_epochs=10, val_split=0.2):
         early_stopping = tf.keras.callbacks.EarlyStopping(
             monitor='val_auc', patience=early_stopping_epochs,
             restore_best_weights=True, mode='max', min_delta=1e-4)
@@ -166,7 +169,7 @@ class ContextualGAM:
              "C": C_train.astype(np.float32),
              "base_y": base_y.astype(np.float32)},
             y=Y_train, epochs=max_epochs, callbacks=[early_stopping],
-            validation_split=0.2, verbose=verbose, batch_size=batch_size)
+            validation_split=val_split, verbose=verbose, batch_size=batch_size)
         epoch = np.argmax(history.history['val_auc'])
         val_auc = history.history['val_auc'][epoch]
         train_auc = history.history['auc'][epoch]
